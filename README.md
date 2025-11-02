@@ -52,32 +52,74 @@ This system captures real-time audio from your microphone, suppresses ambient no
 
 ### Prerequisites
 
-- Python 3.8 or higher
-- Windows OS (currently supported)
-- Microphone and speakers/headphones
+- **Python 3.8 or higher** (Python 3.9+ recommended)
+- **Windows OS** (Windows 10/11 currently supported)
+- **Microphone** (built-in or external USB microphone)
+- **Speakers/Headphones** (recommended to avoid feedback loops)
 
-### Step 1: Install Python Dependencies
+### Step 1: Install Python
+
+If you don't have Python installed:
+1. Download Python from [python.org](https://www.python.org/downloads/)
+2. During installation, **check "Add Python to PATH"**
+3. Verify installation: Open Command Prompt and type:
+   ```bash
+   python --version
+   ```
+
+### Step 2: Install Python Dependencies
+
+Navigate to the project directory and install all required packages:
 
 ```bash
 cd speech_enhancement
 pip install -r requirements.txt
 ```
 
-### Step 2: Install PyAudio on Windows
+**Required Dependencies:**
+- `numpy` - Numerical computing library
+- `scipy` - Scientific computing library (for signal processing)
+- `scikit-learn` - Machine learning utilities (for VAD features)
+- `matplotlib` - Plotting library (for GUI visualization)
+- `pyaudio` - Audio I/O library (see Step 3 for installation)
 
-PyAudio can be tricky on Windows. Use one of these methods:
+### Step 3: Install PyAudio on Windows
 
-**Method 1: Pre-built wheel**
+PyAudio requires special installation on Windows due to PortAudio dependencies:
+
+**Method 1: Using pipwin (Recommended - Easiest)**
 ```bash
 pip install pipwin
 pipwin install pyaudio
 ```
 
 **Method 2: Direct wheel installation**
-Download the appropriate wheel from [Unofficial Windows Binaries](https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyaudio) and install:
+1. Visit [Unofficial Windows Binaries for Python Extension Packages](https://www.lfd.uci.edu/~gohlke/pythonlibs/#pyaudio)
+2. Download the wheel file matching your Python version:
+   - For Python 3.11 64-bit: `PyAudio‑0.2.13‑cp311‑cp311‑win_amd64.whl`
+   - For Python 3.10 64-bit: `PyAudio‑0.2.13‑cp310‑cp310‑win_amd64.whl`
+   - For Python 3.9 64-bit: `PyAudio‑0.2.13‑cp39‑cp39‑win_amd64.whl`
+3. Install the downloaded wheel:
+   ```bash
+   pip install PyAudio‑0.2.13‑cp311‑cp311‑win_amd64.whl
+   ```
+   (Replace with your downloaded filename)
+
+**Method 3: Build from source (Advanced)**
 ```bash
-pip install PyAudio‑0.2.13‑cp311‑cp311‑win_amd64.whl
+pip install pyaudio
 ```
+*Note: This requires Microsoft Visual C++ Build Tools*
+
+### Step 4: Verify Installation
+
+Test that all dependencies are installed correctly:
+
+```bash
+python -c "import pyaudio; import numpy; import scipy; import matplotlib; print('All dependencies installed successfully!')"
+```
+
+If no errors appear, you're ready to run the application!
 
 ## Usage
 
@@ -129,21 +171,41 @@ python main.py
    - Click "Toggle Bypass" to disable processing
    - Use for A/B comparison or system testing
 
+## System Requirements
+
+### Minimum Requirements
+- **OS**: Windows 10 (64-bit) or Windows 11
+- **RAM**: 4GB minimum, 8GB recommended
+- **CPU**: Intel Core i3 or equivalent (modern dual-core processor)
+- **Storage**: 500MB free space for installation and recordings
+- **Audio**: Microphone input device
+
+### Recommended Requirements
+- **RAM**: 8GB or more
+- **CPU**: Intel Core i5 or equivalent (quad-core processor)
+- **Storage**: 2GB free space (for storing recordings)
+- **Audio**: High-quality USB microphone or headset
+
 ## Creating Windows Executable
 
-### Using PyInstaller
+### Prerequisites for Building Executable
+
+1. Install PyInstaller:
+   ```bash
+   pip install pyinstaller
+   ```
+
+### Basic Executable Build
 
 ```bash
-pip install pyinstaller
-
 pyinstaller --onefile --windowed --name "SpeechEnhancer" main.py
 ```
 
 The executable will be in the `dist/` folder.
 
-### Advanced PyInstaller Options
+### Advanced PyInstaller Options (Recommended)
 
-For better performance and smaller file size:
+For better performance, smaller file size, and inclusion of all dependencies:
 
 ```bash
 pyinstaller --onefile ^
@@ -152,36 +214,96 @@ pyinstaller --onefile ^
     --add-data "config.py;." ^
     --hidden-import numpy ^
     --hidden-import scipy ^
+    --hidden-import scikit-learn ^
     --hidden-import matplotlib ^
+    --hidden-import pyaudio ^
+    --hidden-import sklearn.utils._cython_blas ^
+    --collect-all matplotlib ^
     main.py
+```
+
+**Note**: The executable will be large (~200-300MB) as it bundles Python and all dependencies. This allows distribution to machines without Python installed.
+
+## Dependencies
+
+The project requires the following Python packages (automatically installed via `requirements.txt`):
+
+### Core Dependencies
+- **numpy** (>=1.19.0) - Array operations and numerical computations
+- **scipy** (>=1.5.0) - Signal processing functions (FFT, filters, windows)
+- **scikit-learn** (>=0.23.0) - Machine learning utilities for VAD features
+- **matplotlib** (>=3.3.0) - Real-time plotting and visualization in GUI
+- **pyaudio** (>=0.2.11) - Cross-platform audio I/O library
+
+### Installation Verification
+
+After installation, verify all packages:
+```bash
+python -c "import numpy, scipy, sklearn, matplotlib, pyaudio; print('✓ All packages installed')"
 ```
 
 ## Configuration
 
-Edit `config.py` to customize:
+Edit `config.py` to customize system behavior:
 
 ### Audio Settings
-- `CHUNK_SIZE`: Audio buffer size (default: 1024)
+- `CHUNK_SIZE`: Audio buffer size in samples (default: 1024)
+  - Larger values = more latency but better stability
+  - Smaller values = lower latency but more CPU usage
 - `RATE`: Sample rate in Hz (default: 16000)
-- `CHANNELS`: Number of channels (default: 1 - mono)
+  - 16kHz is standard for speech processing
+  - Higher rates (32kHz, 44.1kHz) increase CPU usage
+- `CHANNELS`: Number of audio channels (default: 1 - mono)
+  - Set to 2 for stereo (requires code modifications)
 - `FRAME_DURATION_MS`: Frame duration in milliseconds (default: 64)
+- `BUFFER_SIZE`: Audio queue buffer size (default: 4)
 
 ### DSP Settings
 - `FFT_SIZE`: FFT window size (default: 2048)
+  - Larger = better frequency resolution, more CPU usage
+  - Smaller = faster processing, lower frequency resolution
 - `HOP_LENGTH`: Hop length for FFT (default: 512)
-- `WINDOW_TYPE`: Window function applied (default: 'hann' - Hanning window)
+  - Smaller = smoother output but more processing
+- `WINDOW_TYPE`: Window function (default: 'hann' - Hanning window)
+  - Options: 'hann', 'hamming', 'blackman', etc.
 - `OVERSUBTRACTION_FACTOR`: Noise reduction aggressiveness (default: 2.0)
+  - Higher = more noise removal (may cause artifacts)
+  - Lower = less aggressive noise removal
 - `SPECTRAL_FLOOR`: Minimum gain to prevent over-suppression (default: 0.002)
-- `NOISE_ALPHA`: Adaptive noise estimation smoothing factor (default: 0.98)
+  - Prevents complete signal suppression in quiet bands
+- `NOISE_ALPHA`: Adaptive noise estimation smoothing (default: 0.98)
+  - Higher = slower adaptation to noise changes
 
-### VAD Settings
+### Wiener Filter Settings
+- `WIENER_ALPHA`: Wiener filter adaptation rate (default: 0.99)
+- `WIENER_MIN_GAIN`: Minimum gain floor (default: 0.1)
+  - Prevents complete signal suppression
+
+### VAD (Voice Activity Detection) Settings
 - `VAD_THRESHOLD`: Energy threshold for speech detection (default: 0.03)
-- `VAD_SMOOTHING`: Smoothing window size (default: 5 frames)
+- `VAD_SMOOTHING`: Smoothing window size in frames (default: 5)
+  - Larger = more stable but slower response
+- `VAD_DEFAULT_THRESHOLD`: Fallback threshold (default: 1e-05)
 
 ### Recording Settings
 - `RECORDINGS_DIR`: Directory to save recordings (default: "recordings")
-- `AUTO_FILENAME`: Use auto-generated filenames with timestamps (default: True)
+  - Automatically created if it doesn't exist
+- `AUTO_FILENAME`: Use auto-generated filenames (default: True)
 - `USE_TIMESTAMP`: Include timestamp in filename (default: True)
+- `RECORD_SPEECH_ONLY`: Only record when speech is detected (default: True)
+  - Helps avoid recording silence and noise
+- `RECORD_VAD_THRESHOLD`: VAD probability threshold for recording (default: 0.5)
+  - Higher = only record clear speech
+- `RECORD_PREBUFFER_FRAMES`: Frames to include before speech onset (default: 3)
+- `RECORD_POST_FRAMES`: Frames to keep after speech ends (default: 5)
+- `RECORD_HP_CUTOFF_HZ`: High-pass filter cutoff to remove thumps (default: 120 Hz)
+
+### GUI Settings
+- `WINDOW_TITLE`: Application window title
+- `WINDOW_WIDTH`: Window width in pixels (default: 950)
+- `WINDOW_HEIGHT`: Window height in pixels (default: 750)
+- `UPDATE_INTERVAL`: GUI update interval in milliseconds (default: 100)
+- `PLOT_HISTORY`: Number of data points to display in plots (default: 100)
 
 ## Troubleshooting
 
@@ -212,22 +334,42 @@ Edit `config.py` to customize:
 - Verify processing is running before attempting to record
 - Files are timestamped and saved automatically
 
-## Runtime notes (recent fixes)
+## Recent Improvements & Bug Fixes
 
-The codebase includes a few runtime fixes added in November 2025 to address common audio capture and recording problems:
+### Code Refinements (Latest Update)
 
-- Sample-rate negotiation: The audio capture now attempts to open the device at the configured rate (e.g., 16000 Hz). If the device does not support that rate, the code will fall back to the device's default sample rate and record the actual rate used. Saved WAV files use this actual rate to avoid robotic / chipmunk playback caused by sample-rate mismatches.
+The codebase has been thoroughly refined with comprehensive error handling and stability improvements:
 
-- Click/spike suppression: Short, high-amplitude transients (for example, mouse clicks) can appear in recordings as audible clicks. A small median-based spike suppression filter is applied before saving WAV files to reduce these artifacts. This is a light-weight fix — if clicks persist, consider lowering mic gain or enabling stronger de-clicking/resampling.
+#### 1. **Enhanced Error Handling**
+- Fixed AttributeError risks by properly initializing all thread variables
+- Replaced bare exception clauses with specific exception types for better debugging
+- Added comprehensive null/empty frame checks throughout the processing pipeline
+- Improved error messages for easier troubleshooting
 
-- Device/exception handling: GUI device detection and error handling have been made more permissive. PyAudio/device errors are caught more generally (OSError / Exception) to avoid crashes caused by platform-specific PyAudio exceptions.
+#### 2. **Edge Case Protection**
+- Added validation for empty audio frames at all processing stages
+- Enhanced device detection with individual device error handling
+- Improved concatenation safety in noise profile creation
+- Added type conversion safety checks to prevent runtime errors
 
-- GUI parameter naming: The GUI now calls the audio processing start method with `input_device=` (the AudioProcessor API), rather than a legacy `input_device_index=` keyword. If integrating other code with the GUI, call `AudioProcessor.start_processing(input_device=...)`.
+#### 3. **Runtime Fixes (Previous Updates)**
+- **Sample-rate negotiation**: Automatically falls back to device's default sample rate if requested rate is unsupported. Saved WAV files use the actual rate to prevent robotic/chipmunk playback.
 
-If you encounter any remaining issues after these fixes, please:
+- **Click/spike suppression**: Median-based filter removes high-amplitude transients (mouse clicks, table thumps) from recordings before saving.
 
-1. Confirm the input device selected in the GUI is your physical microphone (not 'Stereo Mix' or system output devices).
-2. Note the console output when the app starts — it prints the actual sample rate used by the audio capture; paste that along with any problematic WAV file metadata when asking for help.
+- **Device/exception handling**: Robust error handling prevents crashes when querying audio devices. Individual device failures don't stop device enumeration.
+
+- **GUI parameter naming**: Standardized API calls use `input_device=` parameter consistently.
+
+### Reporting Issues
+
+If you encounter issues, please provide:
+
+1. **Device Information**: Confirm the input device selected is your physical microphone (not 'Stereo Mix' or output devices)
+2. **Console Output**: Note the actual sample rate printed when the app starts
+3. **Error Messages**: Include full error traceback if available
+4. **System Info**: Windows version, Python version, and audio device model
+5. **Steps to Reproduce**: Detailed steps to trigger the issue
 
 
 ## Project Structure
